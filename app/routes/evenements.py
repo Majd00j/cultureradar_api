@@ -21,6 +21,6 @@ def create_evenement(evenement: schemas.EvenementCreate, db: Session = Depends(g
     db.refresh(db_event)
     return db_event
 
-@router.get("/evenements/", response_model=list[models.EvenementOut])  # <-- Ajoute les paramètres ici
+@router.get("/evenements/", response_model=list[schemas.EvenementResponse])  # <-- Ajoute les paramètres ici
 def read_evenements(limit: int = Query(default=10), offset: int = Query(default=0), db: Session = Depends(get_db)):
     return db.query(models.Evenement).offset(offset).limit(limit).all()
