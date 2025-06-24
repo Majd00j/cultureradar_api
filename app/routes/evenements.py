@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app import models, schemas
@@ -21,6 +21,6 @@ def create_evenement(evenement: schemas.EvenementCreate, db: Session = Depends(g
     db.refresh(db_event)
     return db_event
 
-@router.get("/", response_model=list[schemas.EvenementResponse])
-def read_evenements(db: Session = Depends(get_db)):
-    return db.query(models.Evenement).all()
+@router.get("/evenements/")
+def read_evenements(limit: int = Query(default=10), offset: int = Query(default=0), db: Session = Depends(get_db)):
+    return db.query(models.Evenement).offset(offset).limit(limit).all()
