@@ -3,59 +3,92 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models import Evenement
 from datetime import datetime
+from dateutil.parser import parse
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
 API_KEY = os.getenv("OPENAGENDA_API_KEY")
-AGENDA_SLUG = "biblis-en-folie-2025"
+AGENDA_SLUG = "ile-de-france"  # change si tu veux un autre agenda
 
 def fetch_openagenda_events():
     url = f"https://api.openagenda.com/v2/agendas/{AGENDA_SLUG}/events"
-    params = {
-        "key": API_KEY,
-        "limit": 50,
-        "timezone": "Europe/Paris"
-    }
+    events = []
+    limit = 100
+    offset = 0
+    MAX_EVENTS = 1000 
 
-    response = requests.get(url, params=params)
-    data = response.json()
+    while True:
+        params = {
+            "key": API_KEY,
+            "limit": limit,
+            "offset": offset,
+            "timezone": "Europe/Paris",
+            "detailed": 1,
+            "startsAfter": "2024-01-01"
+        }
 
-    return data.get("events", [])
+        response = requests.get(url, params=params)
+        data = response.json()
+        page_events = data.get("events", [])
+
+        if not page_events:
+            break
+
+        events.extend(page_events)
+        offset += limit
+
+        print(f"Page avec {len(page_events)} événements — total récupéré : {len(events)}")
+
+        if len(page_events) < limit or len(events) >= MAX_EVENTS:
+            break
+
+    return events
 
 def save_events(events):
     db: Session = SessionLocal()
     count = 0
 
     for event in events:
-        fields = event.get("description", {})
-        titre = event.get("title", {}).get("fr")
-        description = fields.get("fr", "")
-        location = event.get("location")
-        if location and "name" in location and "fr" in location["name"]:
-                lieu = location["name"]["fr"]
-        else:
-                lieu = "inconnu"
+        titre = event.get("title", {}).get("fr", "Sans titre")
+        description = event.get("description", {}).get("fr", "")
 
-        prix = 0.0
-        date_str = event.get("timings", [{}])[0].get("start")
+        location = event.get("location")
+        if isinstance(location, dict):
+            name = location.get("name")
+            if isinstance(name, dict):
+                lieu = name.get("fr", "inconnu")
+            elif isinstance(name, str):
+                lieu = name
+            else:
+                lieu = "inconnu"
+        elif isinstance(location, str):
+            lieu = location
+        else:
+            lieu = "inconnu"
+
+        date_str = event.get("timings", [{}])[0].get("begin")
+        if not date_str:
+            continue
 
         try:
-            date = datetime.fromisoformat(date_str)
+            date = parse(date_str)
         except:
             continue
 
-        e = Evenement(
-            titre=titre or "Sans titre",
-            description=description,
-            lieu=lieu,
-            prix=prix,
-            date=date
-        )
-
-        db.add(e)
-        count += 1
+        try:
+            e = Evenement(
+                titre=titre,
+                description=description,
+                lieu=lieu,
+                date=date,
+                prix=0.0
+            )
+            db.add(e)
+            count += 1
+        except:
+            continue
 
     db.commit()
     db.close()
@@ -63,4 +96,5 @@ def save_events(events):
 
 if __name__ == "__main__":
     events = fetch_openagenda_events()
+    print(f"{len(events)} événements récupérés depuis OpenAgenda.")
     save_events(events)
