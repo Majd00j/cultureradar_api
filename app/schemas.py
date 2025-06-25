@@ -8,16 +8,7 @@ class EvenementBase(BaseModel):
     lieu: str
     date: datetime
     prix: float
-
-    # Ajouts
-    image_url: Optional[str]
-    commune: Optional[str]
-    contact_email: Optional[str]
-    contact_phone: Optional[str]
-    conditions: Optional[str]
-    age: Optional[int]
-    latitude: Optional[float]
-    longitude: Optional[float]
+    image_url : str
 
 class EvenementCreate(EvenementBase):
     pass
@@ -28,6 +19,7 @@ class EvenementResponse(EvenementBase):
     class Config:
         orm_mode = True
 
+
 class UtilisateurBase(BaseModel):
     nom: str
     email: str
@@ -37,7 +29,7 @@ class UtilisateurBase(BaseModel):
     expositions: Optional[bool] = False
 
 class UtilisateurCreate(UtilisateurBase):
-    mot_de_passe: str
+    mot_de_passe: str  # En clair pour le moment
 
 class UtilisateurResponse(UtilisateurBase):
     id: int
